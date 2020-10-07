@@ -1,6 +1,10 @@
 #pragma once
 
-#include "../core/result.h"
+#include "service_types.h"
+#include "field.h"
+#include "event.h"
+#include "method.h"
+#include "service_registry.h"
 
 namespace ara::com
 {
@@ -10,51 +14,14 @@ namespace ara::com
     class Service {
 
     // Type definitions:
-    public:
-        /**
-         * Unique id of the service in the network.
-         */ 
-        using ServiceIdType = uint16_t;
-
-        /**
-         * Unique id of the instantiation of the service in the network.
-         */
-        using InstanceIdType = uint16_t;
-
-        /**
-         * Service version.
-         */
-        struct ServiceVersionType {
-            uint8_t major;
-            uint8_t minor;
-        };
-
-        /**
-         * Value which indicates a "don't care" for the version elements.
-         */
-        static const uint8_t ServiceVersionDontCare = 0xFFU;
-
-        /**
-         * Unique id of methods (and events).
-         */
-        using MethodIdType = uint16_t;
-
-        /**
-         * Server state.
-         */
-        enum class ServiceStateType : uint8_t {
-            Down    = 0x00U,
-            Up      = 0x01U,
-            Unknown = 0xFFU
-        };
 
     // Constructors:
     public:
         /**
          * Constructs a new service object.
          */
-        Service(ServiceIdType serviceId, InstanceIdType instanceId, ServiceVersionType serviceVersion) :
-            serviceId(serviceId), instanceId(instanceId), serviceVersion(serviceVersion), serviceState(ServiceStateType::Unknown) {
+        Service(ServiceId id, InstId instId, ServiceVersion version, bool isRemote = false) :
+            id(id), instId(instId), version(version), isRemote(isRemote), state(ServiceState::Unknown) {
             // empty on purpose
         }
 
@@ -62,7 +29,7 @@ namespace ara::com
          * Copy constructor.
          */
         Service(const Service& other) : 
-            serviceId(other.serviceId), instanceId(other.instanceId), serviceVersion(other.serviceVersion), serviceState(other.serviceState){
+            id(other.id), instId(other.instId), version(other.version), isRemote(other.isRemote), state(other.state) {
             // empty on purpose
         }
 
@@ -70,7 +37,7 @@ namespace ara::com
          * Move constructor.
          */
         Service(Service&& other) : 
-            serviceId(other.serviceId), instanceId(other.instanceId), serviceVersion(other.serviceVersion), serviceState(other.serviceState){
+            id(other.id), instId(other.instId), version(other.version), isRemote(other.isRemote), state(other.state) {
             // empty on purpose
         }
 
@@ -87,10 +54,11 @@ namespace ara::com
          * Copy assign.
          */
         Service& operator=(const Service& other) {
-            serviceId = other.serviceId;
-            instanceId = other.instanceId;
-            serviceVersion = other.serviceVersion;
-            serviceState = other.serviceState;
+            id = other.id;
+            instId = other.instId;
+            version = other.version;
+            isRemote = other.isRemote;
+            state = other.state;
             return *this;
         }
 
@@ -98,41 +66,49 @@ namespace ara::com
          * Move assign.
          */
         Service& operator=(Service&& other) {
-            serviceId = other.serviceId;
-            instanceId = other.instanceId;
-            serviceVersion = other.serviceVersion;
-            serviceState = other.serviceState;
+            id = other.id;
+            instId = other.instId;
+            version = other.version;
+            isRemote = other.isRemote;
+            state = other.state;
             return *this;
         }
 
         /**
          * Returns the service id.
          */
-        ServiceIdType ServiceId() const {
-            return serviceId;
+        ServiceId Id() const {
+            return id;
         }
 
         /**
          * Returns the instance-id of the service.
          */
-        InstanceIdType InstanceId() const {
-            return instanceId;
+        InstId InstanceId() const {
+            return instId;
+        }
+
+        /**
+         * Tests the instance-id for equality or don't care.
+         */
+        bool TestInstanceId(InstId other) const {
+            return (other == InstIdDontCare) || (other == instId);
         }
 
         /**
          * Returns the version of the service.
          */
-        ServiceVersionType ServiceVersion() const {
-            return serviceVersion;
+        ServiceVersion Version() const {
+            return version;
         }
 
         /**
          * Tests the service-version for compatibility.
          * A version is compatible if the version is equal or uses the "don't care" value. 
          */
-        bool TestServiceVersion(ServiceVersionType other) {
-            if(other.major == ServiceVersionDontCare || serviceVersion.major == other.major) {
-                return (other.minor == ServiceVersionDontCare) || (serviceVersion.minor == other.minor);
+        bool TestServiceVersion(ServiceVersion other) {
+            if(other.major == ServiceVersionDontCare || version.major == other.major) {
+                return (other.minor == ServiceVersionDontCare) || (version.minor == other.minor);
             } else {
                 return false;
             }
@@ -141,33 +117,41 @@ namespace ara::com
         /**
          * Returns the service-state.
          */
-        ServiceStateType ServiceState() const {
-            return serviceState;
+        ServiceState State() const {
+            return state;
         }
 
         /** 
          * Returns true if service is up.
          */
         bool IsServiceUp() const {
-            return (serviceState == ServiceStateType::Up);
+            return (state == ServiceState::Up);
         }
 
         /**
          * Return true if service is down.
          */
         bool IsServiceDown() const {
-            return (serviceState == ServiceStateType::Down);
+            return (state == ServiceState::Down);
+        }
+
+        /**
+         * Returns true if the consumer is remote.
+         */
+        bool IsRemote() const {
+            return isRemote;
         }
 
 
-    protected:
+    public:
         /**
          * Starts the service.
          * This function calls OnStartService method which needs to be implemented by derived classes.
          */
         void StartService() {
-            OnStartService();
-            serviceState = ServiceStateType::Up;
+            OnStart();
+            state = ServiceState::Up;
+            ServiceRegistry::Get().Provide(this);
         }
 
         /**
@@ -175,15 +159,17 @@ namespace ara::com
          * This function calls OnStopService method which needs to be implemented by derived classes.
          */
         void StopService() {
-            serviceState = ServiceStateType::Down;
-            OnStopService();
+            state = ServiceState::Down;
+            ServiceRegistry::Get().StopProvide(this);
+            OnStop();
         }
 
+    protected:
         /**
          * Is called when service is started.
          * Override this method to handle startup-sequence of service in derived classes.
          */
-        virtual void OnStartService() {
+        virtual void OnStart() {
             // empty on purpose
         }
 
@@ -191,7 +177,7 @@ namespace ara::com
          * Is called when service is stopped.
          * Override this method to handle stop-sequence of service in derived classes.
          */
-        virtual void OnStopService() {
+        virtual void OnStop() {
             // empty on purpose
         }
 
@@ -199,10 +185,11 @@ namespace ara::com
 
     // Members:
     protected:
-        ServiceIdType serviceId;
-        InstanceIdType instanceId;
-        ServiceVersionType serviceVersion;
-        ServiceStateType serviceState;
+        ServiceId id;
+        InstId instId;
+        ServiceVersion version;
+        bool isRemote;
+        ServiceState state;
     };
 
 

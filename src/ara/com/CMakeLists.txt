@@ -1,0 +1,1 @@
+target_sources(rvc PUBLIC "./ara/com/service_registry.cpp")
