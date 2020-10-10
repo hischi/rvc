@@ -6,6 +6,7 @@
 namespace ara::com
 {
     class Service;
+    class ServiceInterface;
     class ServiceConsumer;
     class ServiceRegistry final {
 
@@ -47,7 +48,7 @@ namespace ara::com
          * Consume a service.
          * As soon as service is available, the consumer is notified.
          */
-        Service* Consume(ServiceConsumer* consumer) {
+        ServiceInterface* Consume(ServiceConsumer* consumer) {
             if(std::find(consumers.begin(), consumers.end(), consumer) == consumers.end()) {
                 consumers.push_back(consumer);
             }
@@ -63,10 +64,10 @@ namespace ara::com
         }
 
         /**
-         * Returns the service if it is provided at the moment. 
+         * Returns the service-interface if it is provided at the moment. 
          * Otherwise a nullptr is returned.
          */
-        Service* GetService(ServiceConsumer* consumer);
+        ServiceInterface* GetService(ServiceConsumer* consumer);
 
     private:
         void NotifyConsumers(Service* service);        

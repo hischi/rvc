@@ -1,9 +1,7 @@
 #pragma once
 
 #include "service_types.h"
-#include "field.h"
-#include "event.h"
-#include "method.h"
+#include "service_interface.h"
 #include "service_registry.h"
 
 namespace ara::com
@@ -20,8 +18,8 @@ namespace ara::com
         /**
          * Constructs a new service object.
          */
-        Service(ServiceId id, InstId instId, ServiceVersion version, bool isRemote = false) :
-            id(id), instId(instId), version(version), isRemote(isRemote), state(ServiceState::Unknown) {
+        Service(ServiceId id, InstId instId, ServiceVersion version, ServiceInterface* intf = nullptr, bool isRemote = false) :
+            id(id), instId(instId), version(version), intf(intf), isRemote(isRemote), state(ServiceState::Unknown) {
             // empty on purpose
         }
 
@@ -29,7 +27,7 @@ namespace ara::com
          * Copy constructor.
          */
         Service(const Service& other) : 
-            id(other.id), instId(other.instId), version(other.version), isRemote(other.isRemote), state(other.state) {
+            id(other.id), instId(other.instId), version(other.version), intf(other.intf), isRemote(other.isRemote), state(other.state) {
             // empty on purpose
         }
 
@@ -37,7 +35,7 @@ namespace ara::com
          * Move constructor.
          */
         Service(Service&& other) : 
-            id(other.id), instId(other.instId), version(other.version), isRemote(other.isRemote), state(other.state) {
+            id(other.id), instId(other.instId), version(other.version), intf(other.intf), isRemote(other.isRemote), state(other.state) {
             // empty on purpose
         }
 
@@ -57,6 +55,7 @@ namespace ara::com
             id = other.id;
             instId = other.instId;
             version = other.version;
+            intf = other.intf;
             isRemote = other.isRemote;
             state = other.state;
             return *this;
@@ -69,6 +68,7 @@ namespace ara::com
             id = other.id;
             instId = other.instId;
             version = other.version;
+            intf = other.intf;
             isRemote = other.isRemote;
             state = other.state;
             return *this;
@@ -112,6 +112,13 @@ namespace ara::com
             } else {
                 return false;
             }
+        }
+
+        /** 
+         * Returns the pointer to the service-interface.
+         */
+        ServiceInterface* Interface() const {
+            return intf;
         }
 
         /**
@@ -188,6 +195,7 @@ namespace ara::com
         ServiceId id;
         InstId instId;
         ServiceVersion version;
+        ServiceInterface* intf;
         bool isRemote;
         ServiceState state;
     };

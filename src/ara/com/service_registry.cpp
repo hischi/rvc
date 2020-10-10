@@ -1,10 +1,11 @@
 #include "service_registry.h"
 #include "service.h"
 #include "service_consumer.h"
+#include "service_interface.h"
 
 using namespace ara::com;
 
-Service* ServiceRegistry::GetService(ServiceConsumer* consumer) {
+ServiceInterface* ServiceRegistry::GetService(ServiceConsumer* consumer) {
     for(Service* service : services) {
         if(consumer->Id() != service->Id()) {
             continue;
@@ -18,7 +19,7 @@ Service* ServiceRegistry::GetService(ServiceConsumer* consumer) {
             continue;
         }
 
-        return service;
+        return service->Interface();
     }
     return nullptr;
 }
